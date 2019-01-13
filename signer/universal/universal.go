@@ -11,6 +11,7 @@ import (
 	"github.com/cloudflare/cfssl/info"
 	"github.com/cloudflare/cfssl/signer"
 	"github.com/cloudflare/cfssl/signer/local"
+	"github.com/cloudflare/cfssl/signer/pkcs11"
 	"github.com/cloudflare/cfssl/signer/remote"
 )
 
@@ -46,8 +47,29 @@ func fileBackedSigner(root *Root, policy *config.Signing) (signer.Signer, bool, 
 	return signer, true, err
 }
 
+func pkcs11Signer(root *Root, policy *config.Signing) (signer.Signer, bool, error) {
+	cert := root.Config["cert-file"]
+	module := root.Config["pkcs11-module"]
+	pin := root.Config["pkcs11-pin"]
+	token := root.Config["pkcs11-token"]
+
+	config := pkcs11.Config{
+		Module: module,
+		PIN:    pin,
+		Token:  token,
+	}
+
+	signer, err := pkcs11.New(cert, policy, &config)
+	if err != nil {
+		return nil, false, err
+	}
+
+	return signer, true, err
+}
+
 var localSignerList = []localSignerCheck{
 	fileBackedSigner,
+	pkcs11Signer,
 }
 
 // PrependLocalSignerToList prepends signer to the local signer's list
